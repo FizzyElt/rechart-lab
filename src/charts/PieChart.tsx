@@ -7,9 +7,15 @@ import {
   Legend,
   type PieSectorShapeProps,
   type TooltipContentProps,
+  type TooltipIndex,
 } from "recharts";
 import { Box, Stack, Circle, Text } from "@chakra-ui/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { Match, Boolean as Bool } from "effect";
+import type {
+  ValueType,
+  NameType,
+} from "recharts/types/component/DefaultTooltipContent";
 
 const data = [
   { name: "Group A", value: 400, fill: "#0088FE" },
@@ -18,7 +24,10 @@ const data = [
   { name: "Group D", value: 200, fill: "#FF8042" },
 ];
 
-const renderActiveShape = (props: PieSectorShapeProps): React.ReactElement => {
+const renderActiveShape = (
+  props: PieSectorShapeProps,
+  activeShape: boolean | undefined,
+): React.ReactElement => {
   const {
     cx,
     cy,
@@ -43,7 +52,7 @@ const renderActiveShape = (props: PieSectorShapeProps): React.ReactElement => {
         fill={fill}
       />
       {/* 突出圓弧 */}
-      {isActive && (
+      {(Bool.isBoolean(activeShape) ? activeShape : isActive) && (
         <Sector
           cx={cx}
           cy={cy}
@@ -59,40 +68,64 @@ const renderActiveShape = (props: PieSectorShapeProps): React.ReactElement => {
   );
 };
 
-const ToolTipContent = (
-  props: TooltipContentProps<string | number, string>,
-) => {
-  const { payload } = props;
-  const dataContent = payload && payload.length > 0 ? payload[0] : null;
-
-  return (
-    <Box borderRadius={2} overflow="hidden" bg="white">
-      <Box px={3} py={1} bg="gray.300">
-        <Text fontSize="xs">{dataContent?.name}</Text>
-      </Box>
-      <Box px={3} py={1}>
-        <Stack direction="row" align="center" mb={1}>
-          <Circle size={2} bgColor={dataContent?.payload.fill} />
-          <Text fontSize="xs">{dataContent?.value}</Text>
-        </Stack>
-      </Box>
-    </Box>
+const ToolTipContentCustom = (props: {
+  data: { name: string; value: number; fill: string }[];
+  defaultIndex?: number | TooltipIndex;
+  activeIndex?: TooltipIndex;
+}) => {
+  const { data, defaultIndex, activeIndex } = props;
+  const activeData = Match.value({
+    defaultIndex,
+    activeIndex,
+  }).pipe(
+    Match.when(
+      { defaultIndex: Match.number },
+      ({ defaultIndex }) => data[defaultIndex],
+    ),
+    Match.whenOr(
+      { defaultIndex: Match.string },
+      { defaultIndex: Match.null },
+      () => undefined,
+    ),
+    Match.when(
+      { activeIndex: Match.string },
+      ({ activeIndex }) => data[Number.parseInt(activeIndex)],
+    ),
+    Match.orElse(() => undefined),
   );
+
+  if (activeData) {
+    return (
+      <Box borderRadius={2} overflow="hidden" bg="white">
+        <Box px={3} py={1} bg="gray.300">
+          <Text fontSize="xs">{activeData?.name}</Text>
+        </Box>
+        <Box px={3} py={1}>
+          <Stack direction="row" align="center" mb={1}>
+            <Circle size={2} bgColor={activeData?.fill} />
+            <Text fontSize="xs">{activeData?.value}</Text>
+          </Stack>
+        </Box>
+      </Box>
+    );
+  }
+
+  return null;
 };
 
 const MyPieChart = () => {
   const [showIndex, setShowIndex] = useState<number | undefined>(undefined);
-  const autoShow = useRef<"idle" | "showing" | "ended">("idle");
-  const [autoShowState, setAutoShowState] = useState<
-    "idle" | "showing" | "ended"
-  >("idle");
 
+  // tooltip 控制權
+  const [active, setActive] = useState<boolean | undefined>(undefined);
+  // 動畫狀態
+  const autoShowRef = useRef<"idle" | "showing" | "ended">("idle");
   useEffect(() => {
-    if (showIndex !== undefined && autoShowState === "showing") {
+    if (showIndex !== undefined && autoShowRef.current === "showing") {
       const timeoutId = setTimeout(() => {
         if (showIndex === data.length - 1) {
-          autoShow.current = "ended";
-          setAutoShowState("ended");
+          autoShowRef.current = "ended";
+          setActive(undefined);
           setShowIndex(undefined);
         } else {
           setShowIndex(showIndex + 1);
@@ -101,17 +134,43 @@ const MyPieChart = () => {
 
       return () => clearTimeout(timeoutId);
     }
-  }, [showIndex, autoShowState]);
+  }, [showIndex]);
 
   const triggerAnimation = () => {
-    setTimeout(() => {
-      if (autoShow.current === "idle") {
-        setAutoShowState("showing");
-        autoShow.current = "showing";
+    if (autoShowRef.current === "idle") {
+      autoShowRef.current = "showing";
+      setTimeout(() => {
+        setActive(true);
         setShowIndex(0);
-      }
-    }, 2000);
+      }, 2000);
+    }
   };
+
+  const renderShape = useCallback(
+    (shapeProps: PieSectorShapeProps, shapeIndex: number) => {
+      return renderActiveShape(
+        shapeProps,
+        Number.isInteger(showIndex) ? shapeIndex === showIndex : undefined,
+      );
+    },
+    [showIndex],
+  );
+
+  const renderTooltip = useCallback(
+    <TValue extends ValueType, TName extends NameType>({
+      defaultIndex,
+      activeIndex,
+    }: TooltipContentProps<TValue, TName>) => {
+      return (
+        <ToolTipContentCustom
+          data={data}
+          defaultIndex={defaultIndex}
+          activeIndex={activeIndex}
+        />
+      );
+    },
+    [data],
+  );
 
   return (
     <PieChart responsive style={{ width: "220px", aspectRatio: 1 }}>
@@ -125,30 +184,34 @@ const MyPieChart = () => {
         outerRadius="200px"
         innerRadius="50%"
         paddingAngle={2}
-        shape={renderActiveShape}
+        shape={renderShape}
         onAnimationEnd={() => {
-          console.log("onAnimationEnd");
           triggerAnimation();
         }}
       />
       <Label value="Pie Chart" position="center" />
+
+      {/* controlled */}
       <Tooltip
-        content={ToolTipContent}
+        content={renderTooltip}
         defaultIndex={showIndex}
+        active={active}
+        position={active ? { x: 80, y: 20 } : undefined}
         animationDuration={200}
-        trigger={autoShowState === "ended" ? "hover" : "click"}
       />
 
       <Legend
         verticalAlign="bottom"
-        height={36}
+        height={50}
         onMouseEnter={(_data, idx) => {
-          if (autoShow.current === "ended") {
+          if (autoShowRef.current === "ended") {
+            setActive(true);
             setShowIndex(idx);
           }
         }}
         onMouseLeave={() => {
-          if (autoShow.current === "ended") {
+          if (autoShowRef.current === "ended") {
+            setActive(undefined);
             setShowIndex(undefined);
           }
         }}
