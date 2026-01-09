@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   BarChart,
   Bar,
@@ -59,6 +59,7 @@ const CustomTooltip = (props: TooltipContentProps<number, string>) => {
 };
 
 const StackChart = () => {
+  const timeoutIdRef = useRef<number | undefined>(undefined);
   const [activeIndex, setActiveIndex] = useState<number | undefined>(undefined);
   const [activeStack, setActiveStack] = useState<string | undefined>(undefined);
   const handleEnter = useCallback((_event: BarRectangleItem, index: number) => {
@@ -151,11 +152,15 @@ const StackChart = () => {
       />
       <Legend
         onMouseEnter={(data, index) => {
+          clearTimeout(timeoutIdRef.current);
+          timeoutIdRef.current = undefined;
           setActiveStack(data.value);
           console.log("enter", data, index);
         }}
         onMouseLeave={() => {
-          setActiveStack(undefined);
+          timeoutIdRef.current = setTimeout(() => {
+            setActiveStack(undefined);
+          }, 400);
         }}
       />
     </BarChart>
