@@ -155,7 +155,6 @@ const StackChart = () => {
           clearTimeout(timeoutIdRef.current);
           timeoutIdRef.current = undefined;
           setActiveStack(data.value);
-          console.log("enter", data, index);
         }}
         onMouseLeave={() => {
           timeoutIdRef.current = setTimeout(() => {
