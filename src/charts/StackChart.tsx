@@ -13,6 +13,7 @@ import {
   type TooltipContentProps,
 } from "recharts";
 import { Box, Circle, Stack, Text } from "@chakra-ui/react";
+import { compactNumber } from "@/util";
 
 const data = [
   {
@@ -95,7 +96,7 @@ const StackChart = () => {
     >
       <CartesianGrid strokeDasharray="3 3" vertical={false} />
       <XAxis dataKey="name" />
-      <YAxis width="auto" />
+      <YAxis tickFormatter={compactNumber} />
       <BarStack radius={[5, 5, 0, 0]}>
         <Bar
           dataKey="stackC"

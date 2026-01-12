@@ -1,5 +1,5 @@
 import { DateTime } from "effect";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   AreaChart,
   Area,
@@ -8,18 +8,32 @@ import {
   YAxis,
   Tooltip,
   type TooltipContentProps,
+  Legend,
 } from "recharts";
-import { Box, Button, Circle, Stack, Text } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Circle,
+  Stack,
+  Text,
+  NumberInput,
+  Group,
+} from "@chakra-ui/react";
 import { StructConfig as sc, StructGenerator as sg } from "struct-fakerator";
-import { Number as Num } from "struct-fakerator/utils";
+import { Number as Num, Common } from "struct-fakerator/utils";
+import { compactNumber } from "@/util";
+import { useFakeData } from "@/hooks/useFakeData";
 
-const scheme = sc.array(
-  sc.object({
-    item1: Num.int({ min: 0, max: 1000 }),
-    item2: Num.int({ min: 0, max: 1000 }),
-  }),
-  50,
-);
+const constantScheme = sc.object({
+  item1: Common.constant(1000),
+  item2: Common.constant(100),
+});
+const randomScheme = sc.object({
+  item1: Num.int({ min: 0, max: 1000 }),
+  item2: Num.int({ min: 0, max: 1000 }),
+});
+
+const scheme = randomScheme;
 
 const now = DateTime.unsafeNow();
 
@@ -29,9 +43,9 @@ const tickFormatter = (data: number, mobileMode: boolean) => {
   if (mobileMode) {
     return date.toDateString();
   }
-  const month = date.getMonth() + 1;
+  const month = (date.getMonth() + 1).toString();
 
-  return month.toString();
+  return month.length === 1 ? "0" + month : month;
 };
 
 const CustomTooltip = (props: TooltipContentProps<number, string>) => {
@@ -60,19 +74,25 @@ const CustomTooltip = (props: TooltipContentProps<number, string>) => {
 };
 
 const MyAreaChart = () => {
-  const [reload, setReload] = useState(0);
   const [mobileMode, setMobileMode] = useState(false);
+  const [dataCount, setDataCount] = useState(60);
+  const [visible, setVisible] = useState({
+    item1: true,
+    item2: true,
+  });
 
-  const data = useMemo(() => {
+  const genDataFn = useCallback(() => {
     return sg
-      .genFn(scheme)()
+      .genFn(sc.array(scheme, dataCount))()
       .map((content, index) => ({
         ...content,
         date: DateTime.add(now, { days: index })
           .pipe(DateTime.toDate)
           .getTime(),
       }));
-  }, [reload]);
+  }, [dataCount]);
+
+  const { data, handleReload } = useFakeData(genDataFn);
 
   const ticks = useMemo(() => {
     if (mobileMode) {
@@ -86,33 +106,33 @@ const MyAreaChart = () => {
     return data.filter((_, index) => index % len === 0).map(({ date }) => date);
   }, [data, mobileMode]);
 
-  const gradientOffset = useMemo(() => {
-    const item1List = data.map(({ item1 }) => item1);
-    const item1Max = Math.max(...item1List);
-    const item1Min = Math.min(...item1List);
-
-    const item1Offset = item1Max / (item1Max - item1Min);
-
-    const item2List = data.map(({ item2 }) => item2);
-    const item2Max = Math.max(...item2List);
-    const item2Min = Math.min(...item2List);
-
-    const item2Offset = item2Max / (item2Max - item2Min);
-
-    return {
-      item1Offset,
-      item2Offset,
-    };
-  }, []);
-
   return (
     <>
       <Button size="sm" onClick={() => setMobileMode((prev) => !prev)}>
         mb/pc
       </Button>
-      <Button size="sm" onClick={() => setReload((prev) => prev + 1)}>
-        reload
-      </Button>
+      <Group
+        as="form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleReload();
+        }}
+      >
+        <NumberInput.Root
+          defaultValue={dataCount.toString()}
+          size="sm"
+          onValueChange={(e) => {
+            if (!Number.isNaN(e.valueAsNumber)) {
+              setDataCount(e.valueAsNumber);
+            }
+          }}
+        >
+          <NumberInput.Input />
+        </NumberInput.Root>
+        <Button type="submit" size="sm">
+          reload
+        </Button>
+      </Group>
       <AreaChart
         style={{
           width: "100%",
@@ -136,7 +156,7 @@ const MyAreaChart = () => {
           ticks={ticks}
           tickFormatter={(data: number) => tickFormatter(data, mobileMode)}
         />
-        <YAxis width="auto" />
+        <YAxis tickFormatter={compactNumber} />
         <Tooltip
           content={CustomTooltip}
           position={mobileMode ? { x: 0, y: 0 } : undefined}
@@ -144,33 +164,42 @@ const MyAreaChart = () => {
         <defs>
           <linearGradient id="item_1" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#00add4" stopOpacity={1} />
-            <stop
-              offset={gradientOffset.item1Offset}
-              stopColor="#00add4"
-              stopOpacity={0}
-            />
+            <stop offset={1} stopColor="#00add4" stopOpacity={0} />
           </linearGradient>
           <linearGradient id="item_2" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#00601a" stopOpacity={1} />
-            <stop
-              offset={gradientOffset.item2Offset}
-              stopColor="#00601a"
-              stopOpacity={0}
-            />
+            <stop offset={1} stopColor="#00601a" stopOpacity={0} />
           </linearGradient>
         </defs>
 
         <Area
+          hide={!visible.item1}
           strokeWidth={2}
           dataKey="item1"
           stroke="#00add4"
           fill="url(#item_1)"
         />
         <Area
+          hide={!visible.item2}
           strokeWidth={2}
           dataKey="item2"
           stroke="#00601a"
           fill="url(#item_2)"
+        />
+
+        <Legend
+          onClick={(data) => {
+            setVisible((prev) => {
+              const newValue = data.value
+                ? !prev[data.value as "item1" | "item2"]
+                : false;
+
+              return {
+                ...prev,
+                [data.value || ""]: newValue,
+              };
+            });
+          }}
         />
       </AreaChart>
     </>

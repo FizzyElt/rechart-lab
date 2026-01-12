@@ -9,19 +9,25 @@ import {
   type TooltipContentProps,
 } from "recharts";
 import { StructConfig as sc, StructGenerator as sg } from "struct-fakerator";
-import { Box, Button, Text, Stack, Circle } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Text,
+  Stack,
+  Circle,
+  Group,
+  NumberInput,
+} from "@chakra-ui/react";
 import { Number as Num } from "struct-fakerator/utils";
-
+import { compactNumber } from "@/util";
 import { DateTime } from "effect";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useFakeData } from "@/hooks/useFakeData";
 
-const scheme = sc.array(
-  sc.object({
-    revenue: Num.int({ min: 0, max: 10000 }),
-    profit: Num.int({ min: 0, max: 20000 }),
-  }),
-  360,
-);
+const scheme = sc.object({
+  revenue: Num.int({ min: 0, max: 10000 }),
+  profit: Num.int({ min: 0, max: 20000 }),
+});
 
 const now = DateTime.unsafeNow();
 
@@ -56,25 +62,27 @@ const tickFormatter = (data: number, mobileMode: boolean) => {
   if (mobileMode) {
     return date.toDateString();
   }
-  const month = date.getMonth() + 1;
+  const month = (date.getMonth() + 1).toString();
 
-  return month.toString();
+  return month.length === 1 ? "0" + month : month;
 };
 
 const MyLineChart = () => {
-  const [reload, setReload] = useState(0);
   const [mobileMode, setMobileMode] = useState(false);
+  const [dataCount, setDataCount] = useState(360);
 
-  const data = useMemo(() => {
+  const genDataFn = useCallback(() => {
     return sg
-      .genFn(scheme)()
+      .genFn(sc.array(scheme, dataCount))()
       .map((content, index) => ({
         ...content,
         date: DateTime.add(now, { days: index })
           .pipe(DateTime.toDate)
           .getTime(),
       }));
-  }, [reload]);
+  }, [dataCount]);
+
+  const { data, handleReload } = useFakeData(genDataFn);
 
   const ticks = useMemo(() => {
     if (mobileMode) {
@@ -91,9 +99,28 @@ const MyLineChart = () => {
       <Button size="sm" onClick={() => setMobileMode((prev) => !prev)}>
         mb/pc
       </Button>
-      <Button size="sm" onClick={() => setReload((prev) => prev + 1)}>
-        reload
-      </Button>
+      <Group
+        as="form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleReload();
+        }}
+      >
+        <NumberInput.Root
+          size="sm"
+          defaultValue={dataCount.toString()}
+          onValueChange={(e) => {
+            if (!Number.isNaN(e.valueAsNumber)) {
+              setDataCount(e.valueAsNumber);
+            }
+          }}
+        >
+          <NumberInput.Input />
+        </NumberInput.Root>
+        <Button size="sm" type="submit">
+          reload
+        </Button>
+      </Group>
       <LineChart
         style={{
           width: "100%",
@@ -118,7 +145,7 @@ const MyLineChart = () => {
           ticks={ticks}
           tickFormatter={(data) => tickFormatter(data, mobileMode)}
         />
-        <YAxis />
+        <YAxis tickFormatter={compactNumber} />
         <Tooltip<number, string>
           position={mobileMode ? { x: 0, y: 0 } : undefined}
           content={CustomTooltip}
