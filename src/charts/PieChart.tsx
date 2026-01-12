@@ -196,12 +196,12 @@ const MyPieChart = () => {
         content={renderTooltip}
         defaultIndex={showIndex}
         active={active}
-        position={active ? { x: 80, y: 20 } : undefined}
-        animationDuration={200}
+        isAnimationActive={false}
       />
 
       <Legend
         verticalAlign="bottom"
+        align="center"
         height={50}
         onMouseEnter={(_data, idx) => {
           if (autoShowRef.current === "ended") {

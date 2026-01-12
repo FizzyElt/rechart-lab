@@ -29,8 +29,8 @@ const constantScheme = sc.object({
   item2: Common.constant(100),
 });
 const randomScheme = sc.object({
-  item1: Num.int({ min: 0, max: 1000 }),
-  item2: Num.int({ min: 0, max: 1000 }),
+  item1: Num.int({ min: 0, max: 1_000_000 }),
+  item2: Num.int({ min: 0, max: 1_000_000 }),
 });
 
 const scheme = randomScheme;
@@ -142,9 +142,8 @@ const MyAreaChart = () => {
         responsive
         data={data}
         margin={{
-          top: mobileMode ? 100 : 0,
+          top: mobileMode ? 100 : 10,
           right: 20,
-          left: 20,
           bottom: 0,
         }}
       >
@@ -152,11 +151,18 @@ const MyAreaChart = () => {
         <XAxis
           dataKey="date"
           type="number"
-          domain={["dataMin", "dataMax"]}
+          tickLine={false}
+          axisLine={false}
           ticks={ticks}
+          padding={{ left: 5 }}
           tickFormatter={(data: number) => tickFormatter(data, mobileMode)}
         />
-        <YAxis tickFormatter={compactNumber} />
+        <YAxis
+          tickFormatter={compactNumber}
+          width={48}
+          tickLine={false}
+          axisLine={false}
+        />
         <Tooltip
           content={CustomTooltip}
           position={mobileMode ? { x: 0, y: 0 } : undefined}
@@ -188,6 +194,7 @@ const MyAreaChart = () => {
         />
 
         <Legend
+          align="left"
           onClick={(data) => {
             setVisible((prev) => {
               const newValue = data.value
