@@ -95,8 +95,8 @@ const StackChart = () => {
       }}
     >
       <CartesianGrid strokeDasharray="3 3" vertical={false} />
-      <XAxis dataKey="name" />
-      <YAxis tickFormatter={compactNumber} />
+      <XAxis dataKey="name" tickLine={false} axisLine={false} />
+      <YAxis tickFormatter={compactNumber} tickLine={false} axisLine={false} />
       <BarStack radius={[5, 5, 0, 0]}>
         <Bar
           dataKey="stackC"

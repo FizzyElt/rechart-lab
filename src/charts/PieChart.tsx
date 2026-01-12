@@ -8,6 +8,7 @@ import {
   type PieSectorShapeProps,
   type TooltipContentProps,
   type TooltipIndex,
+  type LegendPayload,
 } from "recharts";
 import { Box, Stack, Circle, Text } from "@chakra-ui/react";
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -115,7 +116,7 @@ const ToolTipContentCustom = (props: {
 
 const MyPieChart = () => {
   const [showIndex, setShowIndex] = useState<number | undefined>(undefined);
-
+  const prevTime = useRef<number | undefined>(undefined);
   // tooltip 控制權
   const [active, setActive] = useState<boolean | undefined>(undefined);
   // 動畫狀態
@@ -138,11 +139,20 @@ const MyPieChart = () => {
 
   const triggerAnimation = () => {
     if (autoShowRef.current === "idle") {
-      autoShowRef.current = "showing";
-      setTimeout(() => {
+      if (prevTime.current === undefined) {
+        prevTime.current = Date.now();
+        return;
+      }
+      const now = Date.now();
+      const timeDiff = now - prevTime.current;
+
+      if (timeDiff >= 1500) {
+        autoShowRef.current = "showing";
         setActive(true);
         setShowIndex(0);
-      }, 2000);
+      }
+
+      prevTime.current = now;
     }
   };
 
@@ -157,10 +167,11 @@ const MyPieChart = () => {
   );
 
   const renderTooltip = useCallback(
-    <TValue extends ValueType, TName extends NameType>({
-      defaultIndex,
-      activeIndex,
-    }: TooltipContentProps<TValue, TName>) => {
+    <TValue extends ValueType, TName extends NameType>(
+      props: TooltipContentProps<TValue, TName>,
+    ) => {
+      const { defaultIndex, activeIndex } = props;
+
       return (
         <ToolTipContentCustom
           data={data}
@@ -196,25 +207,24 @@ const MyPieChart = () => {
         content={renderTooltip}
         defaultIndex={showIndex}
         active={active}
-        isAnimationActive={false}
       />
 
       <Legend
         verticalAlign="bottom"
         align="center"
         height={50}
-        onMouseEnter={(_data, idx) => {
+        onMouseEnter={useCallback((_data: LegendPayload, idx: number) => {
           if (autoShowRef.current === "ended") {
             setActive(true);
             setShowIndex(idx);
           }
-        }}
-        onMouseLeave={() => {
+        }, [])}
+        onMouseLeave={useCallback(() => {
           if (autoShowRef.current === "ended") {
             setActive(undefined);
             setShowIndex(undefined);
           }
-        }}
+        }, [])}
       />
     </PieChart>
   );
