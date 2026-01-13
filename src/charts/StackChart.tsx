@@ -44,16 +44,14 @@ const CustomTooltip = (props: TooltipContentProps<number, string>) => {
         <Text fontSize="xs">{label}</Text>
       </Box>
       <Box px={3} py={1}>
-        {payload
-          .map((item) => {
-            return (
-              <Stack key={item.fill} direction="row" align="center" mb={1}>
-                <Circle size={2} bgColor={item?.fill} />
-                <Text fontSize="xs">{item?.value}</Text>
-              </Stack>
-            );
-          })
-          .reverse()}
+        {payload.map((item) => {
+          return (
+            <Stack key={item.fill} direction="row" align="center" mb={1}>
+              <Circle size={2} bgColor={item?.fill} />
+              <Text fontSize="xs">{item?.value}</Text>
+            </Stack>
+          );
+        })}
       </Box>
     </Box>
   );
@@ -87,6 +85,7 @@ const StackChart = () => {
       }}
       responsive
       data={data}
+      reverseStackOrder={true}
       margin={{
         top: 20,
         bottom: 5,
@@ -99,17 +98,17 @@ const StackChart = () => {
       <YAxis tickFormatter={compactNumber} tickLine={false} axisLine={false} />
       <BarStack radius={[5, 5, 0, 0]}>
         <Bar
-          dataKey="stackC"
+          dataKey="stackA"
           barSize={50}
-          fill="#3dc4d9"
+          fill="#164a03"
           onMouseEnter={handleEnter}
           onMouseLeave={handleLeave}
         >
           {data.map((_entry, index) => (
             <Cell
               key={`cell-${index}`}
-              fill="#3dc4d9"
-              opacity={getOpacity(index, "stackC")}
+              fill="#164a03"
+              opacity={getOpacity(index, "stackA")}
             />
           ))}
         </Bar>
@@ -129,17 +128,17 @@ const StackChart = () => {
           ))}
         </Bar>
         <Bar
-          dataKey="stackA"
+          dataKey="stackC"
           barSize={50}
-          fill="#164a03"
+          fill="#3dc4d9"
           onMouseEnter={handleEnter}
           onMouseLeave={handleLeave}
         >
           {data.map((_entry, index) => (
             <Cell
               key={`cell-${index}`}
-              fill="#164a03"
-              opacity={getOpacity(index, "stackA")}
+              fill="#3dc4d9"
+              opacity={getOpacity(index, "stackC")}
             />
           ))}
         </Bar>
@@ -152,7 +151,7 @@ const StackChart = () => {
         useTranslate3d
       />
       <Legend
-        onMouseEnter={(data, index) => {
+        onMouseEnter={(data) => {
           clearTimeout(timeoutIdRef.current);
           timeoutIdRef.current = undefined;
           setActiveStack(data.value);
@@ -160,7 +159,7 @@ const StackChart = () => {
         onMouseLeave={() => {
           timeoutIdRef.current = setTimeout(() => {
             setActiveStack(undefined);
-          }, 400);
+          }, 200);
         }}
       />
     </BarChart>

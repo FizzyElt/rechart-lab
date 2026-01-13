@@ -207,6 +207,7 @@ const MyPieChart = () => {
         content={renderTooltip}
         defaultIndex={showIndex}
         active={active}
+        isAnimationActive={false}
       />
 
       <Legend

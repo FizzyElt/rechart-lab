@@ -58,16 +58,14 @@ const CustomTooltip = (props: TooltipContentProps<number, string>) => {
         </Text>
       </Box>
       <Box px={3} py={1}>
-        {payload
-          .map((item) => {
-            return (
-              <Stack key={item.stroke} direction="row" align="center" mb={1}>
-                <Circle size={2} bgColor={item.stroke} />
-                <Text fontSize="xs">{item?.value}</Text>
-              </Stack>
-            );
-          })
-          .reverse()}
+        {payload.map((item) => {
+          return (
+            <Stack key={item.stroke} direction="row" align="center" mb={1}>
+              <Circle size={2} bgColor={item.stroke} />
+              <Text fontSize="xs">{item?.value}</Text>
+            </Stack>
+          );
+        })}
       </Box>
     </Box>
   );

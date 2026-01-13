@@ -41,16 +41,14 @@ const CustomTooltip = (props: TooltipContentProps<number, string>) => {
         </Text>
       </Box>
       <Box px={3} py={1}>
-        {payload
-          .map((item) => {
-            return (
-              <Stack key={item.stroke} direction="row" align="center" mb={1}>
-                <Circle size={2} bgColor={item.stroke} />
-                <Text fontSize="xs">{item?.value}</Text>
-              </Stack>
-            );
-          })
-          .reverse()}
+        {payload.map((item) => {
+          return (
+            <Stack key={item.stroke} direction="row" align="center" mb={1}>
+              <Circle size={2} bgColor={item.stroke} />
+              <Text fontSize="xs">{item?.value}</Text>
+            </Stack>
+          );
+        })}
       </Box>
     </Box>
   );
@@ -91,7 +89,9 @@ const MyLineChart = () => {
       return [first, last];
     }
 
-    return data.filter((_, index) => index % 30 === 0).map(({ date }) => date);
+    const len = Math.floor(data.length / 12);
+
+    return data.filter((_, index) => index % len === 0).map(({ date }) => date);
   }, [data, mobileMode]);
 
   return (
@@ -158,7 +158,7 @@ const MyLineChart = () => {
             label ? new Date(label).toDateString() : label
           }
         />
-        <Legend align="left" />
+        <Legend align="left" iconType="plainline" />
       </LineChart>
     </>
   );
